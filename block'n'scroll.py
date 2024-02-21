@@ -8,8 +8,7 @@ import os, shutil
 import curses, _curses, curses.panel
 from curses import wrapper
 import random
-
-
+from my_screen import *
 
 
 #
@@ -91,16 +90,14 @@ def lvl_start_screen(scr, section_coordinates):
 
     scr.move(11, 42)
     scr.refresh(*section_coordinates)
-    #
-    level_control(scr, section_coordinates, scroll_smooth, scr, s1.start_y, s2.start_y, hide=True)
 
     #
-    # while 1:
-    #     key = scr.getch()
-    #     if key == ord('f') or key == ord('F'):
-    #         # scr.clear()
-    #         scroll_smooth(scr, s1.start_y, s2.start_y)
-    #         break
+    while 1:
+        key = scr.getch()
+        if key == ord('f') or key == ord('F'):
+            # scr.clear()
+            scroll_smooth(scr, s1.start_y, s2.start_y)
+            break
 
 
 def lvl_player_select(scr, section_coordinates):
@@ -117,17 +114,8 @@ def lvl_player_select(scr, section_coordinates):
     #
     scr.noutrefresh(*section_coordinates)
 
-
-def mode_select_control(scr, section_coordinates):
-    while 'nought':
-        key = scr.getch()
-        if key == ord('f'):
-            scroll_smooth(scr, s2.start_y, s3.start_y)
-            break
-        elif key == curses.KEY_BACKSPACE:
-            print("LEFT")
-        elif key == curses.KEY_DOWN:
-            print("RIGHT")
+    #
+    level_control(scr, section_coordinates, scroll_smooth)
 
 
 def lvl_difficult_select(scr, section_coordinates):
@@ -199,22 +187,6 @@ def set_cursor(btn):
     pass
 
 
-#
-#   перенести в PadSection ?
-def create_section(scr, make_lvl):
-    # resize_window
-    scr.resize(PadSection.next_y + 24, 80)
-    #
-    new_section = PadSection(scr, )
-    # example: lvl_create_board
-    make_lvl(scr, new_section.section_coordinates)
-
-    # noutrefresh
-    scr.noutrefresh(*new_section.section_coordinates)
-
-    return new_section.start_y
-
-
 def level_control(scr, section_coordinates, command, *args, dict=0, hide=False):
     """
     Обрабатывает пользовательский ввод, вызывается на каждом УРОВНЕ
@@ -236,6 +208,12 @@ def level_control(scr, section_coordinates, command, *args, dict=0, hide=False):
         scr.noutrefresh(*section_coordinates)
         curses.doupdate()
 
+        save_section = []
+        for y in range(24):
+            for x in range(80):
+                save_section.append(scr.inch(y,x))
+
+
     # нужно передать кнопка-описание-{команда}
     # как сделать break при необходимости?
     while True:
@@ -253,7 +231,17 @@ def level_control(scr, section_coordinates, command, *args, dict=0, hide=False):
             print("I pressed p")
         elif key == ord('m'):
             # menu
-            menu_window(scr, section_coordinates)
+            scr.addstr(section_coordinates[0], section_coordinates[1], '  MENU  '*20)
+            scr.noutrefresh(*section_coordinates)
+            curses.doupdate()
+
+            scr.getch()
+
+            for y in range(24):
+                for x in range(80):
+                    save_section.append(scr.inch(y, x))
+
+            # menu_window(scr, section_coordinates)
         elif key == ord('q'):
             break
 
@@ -271,118 +259,11 @@ def result_window():
     pass
 
 
-def menu_window(scr, section_coordinates):
-    #
-    begin_y = 4 + section_coordinates[0]
-    begin_x = 10 + section_coordinates[1]
-    height = 15
-    width = 40
-
-
-    menu = curses.newwin(height, width, begin_y, begin_x)
-
-    # menu.bkgset
-
-    menu.border()
-    menu.addstr(0, 2, 'MENU')
-
-    menu.overlay(scr)
-    menu.noutrefresh()
-    scr.noutrefresh(*section_coordinates)
-    curses.doupdate()
-
-    #tmp
-        # window.bkgdset
-        # window.border
-        # window.box
-
-        # window.subwin
-        # window.subpad
-
-        # window.timeout(delay)
-
-        # window.mvwin(new_y, new_x)
-
-
 class Player:
     pass
 
     def win_check(self):
         pass
-
-
-class Widget:
-    def __init__(self, window, start_y, start_x, widget_text, section_coordinates):
-        self.text = widget_text
-        self.start_y = start_y
-        self.start_x = start_x
-        self.global_start_y = section_coordinates[0] + start_y
-        self.global_start_x = section_coordinates[1] + start_x
-        # self.end_x =
-        self.section_coordinates = section_coordinates
-        self.window = window
-
-        #
-        self.draw()
-
-    def draw(self, attr=0):
-        self.window.addstr(self.global_start_y, self.global_start_x, self.text, attr)
-        self.window.noutrefresh(*self.section_coordinates)
-
-
-class Label(Widget):
-    pass
-
-
-class Button(Widget):
-    """
-    однострочная кнопка
-    """
-    def __init__(self, window, start_y, start_x, widget_text, section_coordinates):
-        super().__init__(window, start_y, start_x, widget_text, section_coordinates)
-        self.is_focused = False
-
-    def draw(self, attr=curses.A_UNDERLINE):
-        self.window.addstr(self.global_start_y, self.global_start_x, self.text, attr)
-        self.window.noutrefresh(*self.section_coordinates)
-
-    # заместо того, чтоб устанавливать фокус вручную ,
-    # нужно устанавливать курсор в границах кнопки, и в этом случае автоматически устанавливать фокус
-    def set_focus(self):
-        self.is_focused = True
-        #
-        self.draw(attr=curses.A_REVERSE | curses.A_BLINK)
-
-        global current_focused_btn
-        current_focused_btn = self
-
-    def clear_focus(self):
-        pass
-
-    def action(self):
-        pass
-
-
-class PadSection:
-    #
-    section_count = 0
-    next_y = 0
-
-    def __init__(self, scr, size_y=23):         # max_line - 1
-        self.start_y = self.__class__.next_y
-        self.end_y = size_y
-        self.end_x = 80
-        #
-        self.section_coordinates = (self.start_y, 0, 0, 0, self.end_y, self.end_x)
-        #
-        scr.addstr(self.start_y, 78, "==")
-        scr.noutrefresh(*self.section_coordinates)
-        #
-        self.__class__.next_y += self.end_y + 1
-        self.__class__.section_count += 1
-
-
-
 
 
 class GridCell:
@@ -486,25 +367,26 @@ def main(stdscr):
     curses.curs_set(0)
     curses.mousemask(curses.ALL_MOUSE_EVENTS | curses.REPORT_MOUSE_POSITION)
     #
+    curses.init_pair(1, curses.COLOR_RED, curses.COLOR_WHITE)
+    #
     pad = curses.newpad(24*2, 80)
     for x in range(24*2):
         pad.addstr(x,0, str(x))
 
     stdscr.refresh()
 
-
-
     # # sections
     global s1, s2, s3
     s1 = PadSection(pad)
     s2 = PadSection(pad)      # lobby
     # s3 = PadSection(pad)
-    # # filling s2
-    # lvl_player_select(pad, s2.section_coordinates)
+
     # #
     # curses.doupdate()
     # #
     lvl_start_screen(pad, s1.section_coordinates)
+    # # generating s2
+    lvl_player_select(pad, s2.section_coordinates)
     # #
     # mode_select_control(pad, s2.section_coordinates)
     # #

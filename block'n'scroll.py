@@ -12,7 +12,6 @@ from my_screen import *
 
 
 #
-# print(os.getlogin())
 # print(shutil.get_terminal_size())
 
 #
@@ -120,6 +119,9 @@ def lvl_difficult_select(section):
 def lvl_create_board(section):
     Label(section, 1, 80 // 2 - len(section.tag) // 2, section.tag)
 
+    Label(section, 3, 7, 'COMPUTER')
+    Label(section, 3, 64, os.getlogin())
+
 
 def level_control(section: PadSection, dict=0, hide=False, focus=0):
     """
@@ -129,10 +131,10 @@ def level_control(section: PadSection, dict=0, hide=False, focus=0):
 
     b_hide = hide
 
-    if not b_hide:
-        Label(section, 19, 65, 'RIGHT : CHANGE')
-        Label(section, 20, 65, 'LEFT  : CHANGE')
-        Label(section, 21, 65, 'ENTER : SELECT')
+    # if not b_hide:
+    #     Label(section, 19, 65, 'RIGHT : CHANGE')
+    #     Label(section, 20, 65, 'LEFT  : CHANGE')
+    #     Label(section, 21, 65, 'ENTER : SELECT')
 
     if section.buttons:
         section.t_set_focus(focus)
@@ -153,7 +155,7 @@ def level_control(section: PadSection, dict=0, hide=False, focus=0):
         elif key == curses.KEY_BACKSPACE:
             # выполнить команду(команда)
             # если кнопка на уровне не нужна, передается команда pass_command():pass
-            # набор необходимых команд формируется на Уровне( локальные функции )
+            # набор необходимых команд формируется на Уровне( локальные функции , dict, etc...)
             execute_command(status_unavailable, section)
 
         elif key == ord('f') or key == ord('F'):
@@ -217,34 +219,56 @@ def create_new_board(**kwargs):
     new_board = create_section(section.pad, tag='board_{}'.format(b), make_lvl=lvl_create_board)
     b += 1
     scroll_smooth(section, new_board)
-    Board(new_board, 3, 3)
-    Gameplay()
+
+    # for x in range(0,80,4 ):
+    #     for y in range(24):
+    #         new_board.pad.addstr(y + new_board.section_coordinates[0], x+new_board.section_coordinates[1], '0')
+    # for y in range(0,24,4):
+    #     for x in range(80):
+    #         new_board.pad.addstr(y + new_board.section_coordinates[0], x + new_board.section_coordinates[1], '0')
+
+
+    Gameplay(new_board)
 
 
 
 def result_window():
     pass
 
+
 class Gameplay:
     """
     пользователь вводит координаты своего хода, компьютер делает случайный ход,
      кто играет крестиками выбирается случайно, если кто-то выиграл – это выводится на экран.
     """
-    def __init__(self):
-        self.player = PlayerController
-        self.computer = AIController
+    def __init__(self, section: PadSection):
+        self.player = set()
+        self.computer = set()
         self.p1 = None  # X
         self.p2 = None  # 0
+
+        self.board = Board(section, 3, 3)   # Board init отрисовывает доску
 
         self.toss()
 
     def toss(self):
         self.p1 = random.choice((self.player, self.computer))
-
+        # TODO: pytest
         if self.p1 is self.computer:
             self.p2 = self.player
         else:
             self.p2 = self.computer
+
+    def place_mark(self, mark_coodinates):
+        # check cell
+        if self.board.cells[mark_coodinates-1].status == 'empty':
+            print(self.board.cells[mark_coodinates-1].status)
+        else:
+            print(self.board.cells[mark_coodinates-1].status)
+
+    def set_current_player(self):
+        pass
+
 
 
 class Controller:
@@ -262,7 +286,17 @@ class AIController(Controller):
 
 
 class GridCell:
+
+    n = 1
+
     def __init__(self, section, start_y, start_x, width, height):
+        #
+        self.status_list = ['empty', 'hold_x', 'hold_0']
+        self.status = self.status_list[0]
+        self.number = self.__class__.n
+        #
+        self.n = 1
+        #
         self.draw_cell(section, start_y, start_x, width, height)
 
     def draw_cell(self, section, start_y, start_x, width, height):
@@ -336,9 +370,17 @@ class GridCell:
             scr.refresh(*section.section_coordinates)
             sleep(sleep_time)
 
+        # 9
+        scr.addstr(y, x+1, str(self.__class__.n))
+        self.__class__.n += 1
+
 
 class Board:
     def __init__(self, section: PadSection, columns: int, raws: int):
+        #
+        self.cells = []
+
+        #
         self.draw_grid(section, columns, raws)
 
     def draw_grid(self, section, columns, raws):
@@ -354,11 +396,14 @@ class Board:
 
         for c in range(columns):
             for r in range(raws):
-                GridCell(section, y, x, CELL_WIDTH, CELL_HEIGHT)
+                self.cells.append(GridCell(section, y, x, CELL_WIDTH, CELL_HEIGHT))
                 x = x + CELL_WIDTH + 3
 
             y = y + CELL_HEIGHT + 2
             x = start_x
+
+        #
+        GridCell.n = 1
 
 
 # 80x24

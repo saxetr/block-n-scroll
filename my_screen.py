@@ -95,7 +95,7 @@ class PadSection:
 
 #
 # #TODO   перенести в PadSection ?
-def create_section(scr, tag:str, make_lvl):
+def create_section(scr, tag: str, make_lvl):
     # resize_window
     scr.resize(PadSection.next_y + 24, 80)
     #
@@ -197,19 +197,12 @@ def menu_window(section):
             pass
         elif key == ord('m'):
             # close menu
-            # print('AAAAAAAAAAAA')
-            # #
-            # menu.clear()
-            # menu.overlay(scr)
-            # menu.noutrefresh()
-            # #
-            # scr.noutrefresh(*section_coordinates)
-            # #
-            # curses.doupdate()
-
             insert_section(section)
             #
             break
+
+class StatusBar:
+    pass
 
 
 class Widget:

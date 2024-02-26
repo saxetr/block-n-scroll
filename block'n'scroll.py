@@ -19,6 +19,7 @@ from my_screen import *
 WIN_COMBINATIONS = ({1, 2, 3}, {4, 5, 6}, {7, 8, 9}, {1, 4, 7}, {2, 5, 8}, {3, 6, 9}, {1, 5, 9}, {3, 5, 7})
 # section_height = 24
 
+
 # #
 def lvl_start_screen(scr, section_coordinates):
     scr.addstr(11, 36, "Press F", curses.A_REVERSE | curses.A_BLINK)
@@ -104,44 +105,72 @@ def lvl_difficult_select(section):
     select_difficult = Label(section, 10,
                              80 // 2 - len("Use N and P keys to select mode and press ENTER:") // 2,
                              "Use N and P keys to select mode and press F:")
+    select_difficult.draw()
 
-    difficult_random = Button(section, 12, 80//2 - len("Random")//2, "Random", action=create_new_board, section=section)
+    difficult_random = Button(section, 'random_btn', 12, 80 // 2 - len("Random") // 2, "Random", action=create_new_section_with_board, section=section)
+    difficult_random.draw()
 
-    difficult_r = Button(section, 13, 80//2 - len("Random")//2, "???", action=status_unavailable, section=section)
+    difficult_r = Button(section, 'r_btn', 13, 80//2 - len("Random")//2, "???", action=status_unavailable, section=section)
+    difficult_r.draw()
 
-    difficult_despairw = Button(section, 14, 80//2 - len("Random")//2, "Despair", action=status_unavailable, section=section)
+    difficult_despair = Button(section, 'despair_btn', 14, 80//2 - len("Random")//2, "Despair", action=status_unavailable, section=section)
+    difficult_despair.draw()
 
     lvl_control_config = {'n': PadSection.next_btn}
 
 
-def lvl_create_board(section):
-    Label(section, 1, 80 // 2 - len(section.tag) // 2, section.tag)
+def lvl_create_board(section: PadSection):
+    # if dbg_mode:
+    #     for x in range(0,80,4 ):
+    #         for y in range(24):
+    #             section.pad.addstr(y + section.section_coordinates[0], x+section.section_coordinates[1], '0')
+    #     for y in range(0,24,4):
+    #         for x in range(80):
+    #             section.pad.addstr(y + section.section_coordinates[0], x + section.section_coordinates[1], '0')
 
-    Label(section, 3, 7, 'COMPUTER')
-    Label(section, 3, 64, os.getlogin())
+    header = Label(section, 1, 80 // 2 - len(section.tag) // 2, section.tag)
+    header.draw()
+
+    c_btn = Button(section, 'computer_btn', 3, 7, ' COMPUTER ')
+    c_btn.draw()
+
+    p_btn = Button(section, 'player_btn', 3, 64, os.getlogin())
+    p_btn.draw()
 
 
-def level_control(section: PadSection, dict=0, hide=False, focus=0):
+def level_control(section: PadSection):
     """
     Обрабатывает пользовательский ввод, вызывается на каждом УРОВНЕ
+    
+    Вызывается в самом верхнем цикле
+    
+    забирает конфиг из секции:
+        конфиг генерируется в lvl_ функциях или create_section_name функциях и регистрируется в секции
+
 
     """
 
-    b_hide = hide
-
-    # if not b_hide:
+    # if not section.config['hide_legend']:
     #     Label(section, 19, 65, 'RIGHT : CHANGE')
     #     Label(section, 20, 65, 'LEFT  : CHANGE')
     #     Label(section, 21, 65, 'ENTER : SELECT')
 
+    # print("DBG:::LVL_CONTROL:::", section.buttons)
     if section.buttons:
-        section.t_set_focus(focus)
+        section.t_set_focus(section.config['focus'])
+        # dbg
+        # print('DBG:::LVL_CONTROL:::current_focused_btn ', section.current_focused_btn)
+        curses.napms(300)
 
     section.pad.noutrefresh(*section.section_coordinates)
     curses.doupdate()
+    # если в секции есть стартовая команда - запустить
+    if section.config['start_command']:
+        section.config['start_command']()
 
     # нужно передать кнопка-описание-{команда}
     #
+    # #TODO: игнорировать ввод пока выполняется действие
     while not PadSection.break_out_flag:
         key = section.pad.getch()
         if key == curses.KEY_ENTER:
@@ -153,39 +182,58 @@ def level_control(section: PadSection, dict=0, hide=False, focus=0):
             # если кнопка на уровне не нужна, передается команда pass_command():pass
             # набор необходимых команд формируется на Уровне( локальные функции , dict, etc...)
             execute_command(status_unavailable, section)
-
+        # global?
         elif key == ord('f') or key == ord('F'):
             # выполняет команду кнопки с фокусом размещенной в section
             section.t_play_action()
 
         elif key == ord('1'):
-            print("I pressed 1")
-
+            execute_command(section.config['key_1'][0], section.config['key_1'][1])
         elif key == ord('2'):
-            print("I pressed 2")
+            execute_command(section.config['key_2'][0], section.config['key_2'][1])
+        elif key == ord('3'):
+            execute_command(section.config['key_3'][0], section.config['key_3'][1])
+        elif key == ord('4'):
+            execute_command(section.config['key_3'][0], section.config['key_4'][1])
+        elif key == ord('5'):
+            execute_command(section.config['key_5'][0], section.config['key_5'][1])
+        elif key == ord('6'):
+            execute_command(section.config['key_6'][0], section.config['key_6'][1])
+        elif key == ord('7'):
+            execute_command(section.config['key_7'][0], section.config['key_7'][1])
+        elif key == ord('8'):
+            execute_command(section.config['key_8'][0], section.config['key_8'][1])
+        elif key == ord('9'):
+            execute_command(section.config['key_9'][0], section.config['key_9'][1])
 
+        # global?
         elif key == ord('m'):
             menu_window(section)
 
         elif key == ord('n'):
-            execute_command(PadSection.next_btn, self=section)
+            if section.config['key_n']:
+                execute_command(section.config['key_n'][0], section.config['key_n'][1])
+            else:
+                section.next_btn()
 
         elif key == ord('p'):
-            section.prev_btn()
+            if section.config['key_p']:
+                execute_command(section.config['key_p'][0], section.config['key_p'][1])
+            else:
+                section.prev_btn()
 
         elif key == ord('q'):
             scroll_smooth(section, s1)
             # break
 
 
-def execute_command(command, **kwargs):
-    command(**kwargs)
+def execute_command(command, *args):
+    command(*args)
 
 
 # command
-def empty_command(**kwargs):
+def empty_command(*args):
     pass
-    print("I pressed p")
 
 
 # command
@@ -193,20 +241,23 @@ def status_unavailable(**kwargs):
     section = kwargs['section']
     t = 'Unavailable'
 
-    Label(section, 23, 79-len(t), t)
+    l1 = Label(section, 23, 79-len(t), t)
+    l1.draw()
+
     section.pad.noutrefresh(*section.section_coordinates)
     curses.doupdate()
 
     curses.napms(1000)
 
-    Label(section, 23, 79-len(t), ' '*len(t))
+    l2 = Label(section, 23, 79-len(t), ' '*len(t))
+    l2.draw()
 
     section.pad.noutrefresh(*section.section_coordinates)
     curses.doupdate()
 
 
 # command
-def create_new_board(**kwargs):
+def create_new_section_with_board(**kwargs):
     global b
     b = 1
 
@@ -215,18 +266,25 @@ def create_new_board(**kwargs):
     new_board = create_section(section.pad, tag='board_{}'.format(b), make_lvl=lvl_create_board)
     b += 1
     scroll_smooth(section, new_board)
-
-    # if dbg_mode:
-    #     for x in range(0,80,4 ):
-    #         for y in range(24):
-    #             new_board.pad.addstr(y + new_board.section_coordinates[0], x+new_board.section_coordinates[1], '0')
-    #     for y in range(0,24,4):
-    #         for x in range(80):
-    #             new_board.pad.addstr(y + new_board.section_coordinates[0], x + new_board.section_coordinates[1], '0')
-
     #
     g = Gameplay(new_board)
-    g.start_game()
+    #
+    new_board.buttons[1].set_action(g.player.place_mark)
+    #
+    lvl_control_config = {'key_1': (g.player.set_mark_coordinates, 1),
+                          'key_2': (g.player.set_mark_coordinates, 2),
+                          'key_3': (g.player.set_mark_coordinates, 3),
+                          'key_4': (g.player.set_mark_coordinates, 4),
+                          'key_5': (g.player.set_mark_coordinates, 5),
+                          'key_6': (g.player.set_mark_coordinates, 6),
+                          'key_7': (g.player.set_mark_coordinates, 7),
+                          'key_8': (g.player.set_mark_coordinates, 8),
+                          'key_9': (g.player.set_mark_coordinates, 9),
+                          'key_n': (empty_command, 0),
+                          'key_p': (empty_command, 0),
+                          'hide': False,
+                          'start_command': g.start_game}
+    new_board.change_config(lvl_control_config)
 
 
 def result_window():
@@ -239,38 +297,41 @@ class Gameplay:
      кто играет крестиками выбирается случайно, если кто-то выиграл – это выводится на экран.
     """
     def __init__(self, section: PadSection):
+        #
         self.section = section
-        self.player = PlayerController(self, 0) # позиция изменяется в toss
-        self.computer = AIController(self, 0)   # позиция изменяется в toss
+        self.player = PlayerController(self, 0) # позиция изменяется в toss__init
+        self.computer = AIController(self, 0)   # позиция изменяется в toss__init
         self.p1 = None  # X
         self.p2 = None  # 0
-        self.current_player = self.p1
         #
         self.board = Board(section)
+        #
+        self.toss__init()     # да, в инит, но столько проблем решает...
+        self.current_player = self.p1
 
     def start_game(self):
         self.make_board()
-        self.toss()
         # в дальнейшем , вызов хода компьютера происходит из функции хода игрока
         if self.p1 is self.computer:
-            curses.napms(300)
-            self.p1.place_mark(6)   # ячейка рандомно выбирается в методе класса
-            curses.napms(300)
-            self.p1.place_mark(7)   # ячейка рандомно выбирается в методе класса
-            curses.napms(300)
-            self.p1.place_mark(8)   # ячейка рандомно выбирается в методе класса
+            curses.napms(1000)
+            self.p1.place_mark()
 
 
     def make_board(self):
+        self.section.set_gameplay(self)
+        #
         self.board.draw_grid(3,3)
 
-    def toss(self):
+    def toss__init(self):
         self.p1 = random.choice((self.player, self.computer))
         # TODO: pytest
         if self.p1 is self.computer:
             self.p2 = self.player
         else:
             self.p2 = self.computer
+            # interface
+            # устанавливаем фокус на player_btn
+            self.section.change_config({'focus': 1})
         #
         self.p1.position = 1
         self.p2.position = 2
@@ -280,13 +341,9 @@ class Gameplay:
             self.current_player = self.p2
         else:
             self.current_player = self.p1
+        # interface
+        self.section.next_btn()
 
-    def game_loop(self):
-        # p1 place_mark
-        # p1 win_check  # if win , stop game
-        # p2 place_mark
-        # p2 wincheck
-        pass
 
     def print_unavailable(self, section, text):
         pass
@@ -299,29 +356,8 @@ class Controller:
         self.moves = set()
         self.position = position
 
-    # place order
-    #
-
-    def place_mark(self, mark_coordinates: int):
-        min_coord = 1
-        max_coord = 9
-        if min_coord >= mark_coordinates >= max_coord:
-            self.game.print_unavailable(self.game.section, 'out of range')
-        #
-        cell = self.game.board.cells[mark_coordinates - 1]
-        if cell in self.find_empty_cell():
-            if self.position == 1:
-                cell.draw_x()
-            else:
-                cell.draw_0()
-            #
-            self.moves.add(mark_coordinates)
-            self.win_check()
-        else:
-            self.game.print_unavailable(self.game.section, 'cell is busy')
-
     def find_empty_cell(self):
-        """        cell = self.game.board.cells[mark_coordinates - 1]
+        """
         :return: список ссылок на ячейки
         """
         empty_cells = []
@@ -330,38 +366,74 @@ class Controller:
                 empty_cells.append(c)
         return empty_cells
 
-    def win_check(self):
+    def win_check_and_change_player(self):
         for combo in WIN_COMBINATIONS:
             if combo.issubset(self.moves):
                 print(' WIN ' * 40)
-            else:
-                self.game.change_current_player()
-
+                curses.napms(1000)
+                exit()
 
         # GAMEOVER
         if not self.find_empty_cell():
             print(' GAMEOVER' * 20)
+            curses.napms(1000)
+            exit()
+        #
+        self.game.change_current_player()
 
 
 class PlayerController(Controller):
-    pass
+    def __init__(self, game, position: str):
+        super().__init__(game, position)
+        self.mark_coordinates = None
+
+    def set_mark_coordinates(self, coord: int):
+        self.mark_coordinates = coord
+
+        # interface
+        l = Label(self.game.section, 8, 60, 'Enter coordinate:')
+        l.draw()
+
+        # interface
+        m = Label(self.game.section, 9, 65, str(coord))
+        m.draw()
+
+        curses.doupdate()
+
+    def place_mark(self):
+        if self.mark_coordinates:
+            #
+            cell = self.game.board.cells[self.mark_coordinates - 1]
+            if cell in self.find_empty_cell():
+                if self.position == 1:
+                    cell.draw_x()
+                else:
+                    cell.draw_0()
+                #
+                self.moves.add(self.mark_coordinates)
+                self.win_check_and_change_player()
+                # вызов метода AIController
+                self.game.current_player.place_mark()
+            else:
+                self.game.print_unavailable(self.game.section, 'cell is busy')
 
 
 class AIController(Controller):
-    def place_mark(self, mark_coordinates: int):
+    def place_mark(self):
         cell = random.choice(self.find_empty_cell())
         mark_coordinates = self.game.board.cells.index(cell) + 1
         # cell = self.game.board.cells[mark_coordinates - 1]
-        print(mark_coordinates)
+        # print(mark_coordinates)
         #
+        curses.napms(1000)
         if self.position == 1:
             cell.draw_x()
         else:
             cell.draw_0()
         #
         self.moves.add(mark_coordinates)
-        print(self.moves)
-        self.win_check()
+        # print(self.moves)
+        self.win_check_and_change_player()
 
 
 class GridCell:
@@ -551,7 +623,7 @@ def main(stdscr):
 
     #
     curses.curs_set(0)
-    curses.mousemask(curses.ALL_MOUSE_EVENTS | curses.REPORT_MOUSE_POSITION)
+    # curses.mousemask(curses.ALL_MOUSE_EVENTS | curses.REPORT_MOUSE_POSITION)
     #
     curses.init_pair(1, curses.COLOR_RED, curses.COLOR_WHITE)
     #
@@ -559,6 +631,10 @@ def main(stdscr):
     if dbg_mode:
         for x in range(24*1):
             pad.addstr(x,0, str(x))
+
+    # TODO
+    # global dbg_window
+    # dbg_window = DBG()
 
     stdscr.refresh()
 
@@ -570,26 +646,8 @@ def main(stdscr):
     # set_control
     while True:
         # print(PadSection.current_section.tag)
-
         PadSection.break_out_flag = False
         level_control(PadSection.current_section)
-
-
-    while True:
-        # #TODO: игнорировать ввод пока выполняется действие
-        key = stdscr.getch()
-        if key == curses.KEY_BACKSPACE:
-            pass
-        elif key == ord('2'):
-            scroll_smooth(pad, current_pad_position[0], PadSection.section_count * 23)
-        elif key == ord('p'):
-            for s in PadSection.list_of_sections:
-                print(s)
-            print()
-            for w in PadSection.list_of_sections['select_mode_screen'].buttons:
-                print(w)
-        elif key == ord('q'):
-            break
 
 
 if __name__ == '__main__':

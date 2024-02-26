@@ -6,6 +6,15 @@ dbg_mode = True
 
 #
 class PadSection:
+    """
+    работа с секциями проиходит следующим образом:
+    = если нужен только статический контент, то вызывается общая функция create_section, в которую передается
+    функция lvl_<name> для заполнения секции статическим контентом и фиксации представления под refresh
+    = если в секции нужен динамический контент ( контент, которого еще не существует на момент вызова create_section,
+    вызывается функция create_section_<name>
+    ==
+    конфигурация секции выполняется вызовом функции section.change_config, в которую передается словарь
+    """
     #
     section_count = 0
     current_section = None
@@ -16,7 +25,13 @@ class PadSection:
 
     break_out_flag = False
 
-    def __init__(self, pad, tag: str, size_y=23, legend=True):         # max_line - 1
+    # Объект секции хранит всю информацию о секции и состояние
+    # Объекты кнопок (координаты, текст ...)
+    # Лейблы
+    # И можно перерисовать полностью уровень из этой информации
+    def __init__(self, pad, tag: str, size_y=23, config=None):         # max_line - 1
+        # print('DBG::PadSECTION::INIT')
+        # curses.napms(2000)
         self.pad = pad
         self.tag = tag
         self.start_y = self.__class__.next_y
@@ -27,20 +42,46 @@ class PadSection:
         #
         self.labels = []
         self.buttons = []
+        self.gameplay = None
 
         self.current_focused_btn = None
-        #
-        self.is_legend = legend
-        #
+        # config for level_control
+        self.config = {'hide_legend': False,
+                       'focus': 0,
+                       'start_command': 0,
+                       'key_1': None,
+                       'key_2': None,
+                       'key_3': None,
+                       'key_4': None,
+                       'key_5': None,
+                       'key_6': None,
+                       'key_7': None,
+                       'key_8': None,
+                       'key_9': None,
+                       'key_n': None,
+                       'key_p': None}
+        # dbg
+        self.dbg_window = DBG(self, self.start_y + 24-7, 0, 7, 80)
         if dbg_mode:
             pad.addstr(self.start_y, 78, "==")
             pad.noutrefresh(*self.section_coordinates)
+            self.dbg_window.add_dbg_message('test')
         #
         self.__class__.next_y += self.end_y + 1
         self.__class__.section_count += 1
 
+    def get_config_from_lvl(self):
+        pass
+
+    def change_config(self, config: dict):
+        for k, v in config.items():
+            self.config[k] = v
+
+    # если есть кнопки в секции, на первой устанавливается фокус из level_control
     def t_set_focus(self, focus):
         self.buttons[focus].set_focus(self)
+        #
+        self.current_focused_btn = self.buttons[focus]
 
     def t_play_action(self):
         cur = self.current_focused_btn
@@ -51,6 +92,10 @@ class PadSection:
 
     def next_btn(self):
         cur = self.current_focused_btn
+        # dbg
+        # print('DEBUG::PadSection::next_btn::cur', cur)
+        # curses.napms(2000)
+        #
         if cur:
             # find button in buttons
             i = self.buttons.index(cur)
@@ -87,15 +132,21 @@ class PadSection:
         else:
             pass
 
-# Объект секции хранит всю информацию о секции и состояние
-# Объекты кнопок (координаты, текст ...)
-# Лейблы
-# И можно перерисовать полностью уровень из этой информации
+    def add_btn(self, btn):
+        self.buttons.append(btn)
+
+    def add_label(self, label):
+        self.labels.append(label)
+
+    def set_gameplay(self, game):
+        self.gameplay = game
 
 
 #
 # #TODO   перенести в PadSection ?
 def create_section(scr, tag: str, make_lvl):
+    # передается функция заполнения уровня статикой make_lvl
+    # к моменту прокрутки представления уровня должно существовать
     # resize_window
     scr.resize(PadSection.next_y + 24, 80)
     #
@@ -112,10 +163,39 @@ def create_section(scr, tag: str, make_lvl):
 
 
 class Window:
-    # ну если не могу понять как работает оверлап, реализую свой объект окна.
-    #
-    # обатрибуты страт_у старт_х высота ширина
-    pass
+    def __init__(self, section, begin_y, begin_x, height, width):
+        self.section = section
+        self.begin_y = begin_y + section.section_coordinates[0]
+        self.begin_x = begin_x + section.section_coordinates[1]
+        self.height = height
+        self.width = width
+        #
+        self.window = curses.newwin(height, width, begin_y, begin_x)
+
+    def set_foreground(self):
+        #
+        copy_section(self.section)
+        #
+        self.window.overlay(self.section.pad)
+        self.window.noutrefresh()
+        self.section.pad.noutrefresh(*self.section.section_coordinates)
+        curses.doupdate()
+
+    def delete_window(self):
+        del self.window
+        #
+        insert_section(self.section)
+
+
+class DBG(Window):
+    def __init__(self, section, begin_y, begin_x, height, width):
+        super().__init__(section, begin_y, begin_x, height, width)
+        self.next_str_y = 0
+
+    def add_dbg_message(self, text):
+        self.window.addstr(self.next_str_y, 0 , text)
+        self.next_str_y += 1
+        self.set_foreground()
 
 
 def copy_section(section):
@@ -217,12 +297,6 @@ class Widget:
         self.end_y = start_y
         self.end_x = start_x + len(widget_text)
         self.area = area
-        #
-        self.draw()
-
-    def draw(self, attr=0):
-        self.area.pad.addstr(self.start_y, self.start_x, self.text, attr)
-        self.area.pad.noutrefresh(*self.area.section_coordinates)
 
 
 class Label(Widget):
@@ -231,21 +305,32 @@ class Label(Widget):
         #
         area.labels.append(self)
 
+    def add_label_to_area(self):
+        self.area.add_label(self)
+
+    def draw(self, attr=0):
+        #
+        self.add_label_to_area()
+        #
+        self.area.pad.addstr(self.start_y, self.start_x, self.text, attr)
+        self.area.pad.noutrefresh(*self.area.section_coordinates)
+
 
 class Button(Widget):
     """
 
     """
-    def __init__(self, area: PadSection, start_y: int, start_x: int, widget_text: str, action, **kwargs):
+    def __init__(self, area: PadSection, tag: str, start_y: int, start_x: int, widget_text: str, action=None, **kwargs):
         super().__init__(area, start_y, start_x, widget_text)
+        self.tag = tag
         self.is_focused = False
         self.action = action
         self.kwargs = kwargs
 
-        #
-        area.buttons.append(self)
-
     def draw(self, attr=curses.A_UNDERLINE):
+        #
+        self.area.add_btn(self)
+        #
         self.area.pad.addstr(self.start_y, self.start_x, self.text, attr)
         self.area.pad.noutrefresh(*self.area.section_coordinates)
 
@@ -254,12 +339,13 @@ class Button(Widget):
         #
         self.draw(attr=curses.A_REVERSE | curses.A_BLINK)
 
-        section.current_focused_btn = self
-
     def clear_focus(self):
         self.is_focused = False
         #
         self.draw(attr=curses.A_UNDERLINE)
+
+    def set_action(self, action):
+        self.action = action
 
     def play_action(self):
         self.action(**self.kwargs)

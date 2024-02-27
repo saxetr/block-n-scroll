@@ -13,7 +13,7 @@ class PadSection:
     = если в секции нужен динамический контент ( контент, которого еще не существует на момент вызова create_section,
     вызывается функция create_section_<name>
     ==
-    конфигурация секции выполняется вызовом функции section.change_config, в которую передается словарь
+    конфигурация секции выполняется вызовом функции section.set_config, в которую передается словарь
     """
     #
     section_count = 0
@@ -58,22 +58,20 @@ class PadSection:
                        'key_7': None,
                        'key_8': None,
                        'key_9': None,
+                       'key_m': None,
                        'key_n': None,
                        'key_p': None}
         # dbg
-        self.dbg_window = DBG(self, self.start_y + 24-7, 0, 7, 80)
         if dbg_mode:
             pad.addstr(self.start_y, 78, "==")
+            for x in range(24):
+                pad.addstr(self.start_y + x, 0, str(x+self.__class__.next_y))
             pad.noutrefresh(*self.section_coordinates)
-            self.dbg_window.add_dbg_message('test')
         #
         self.__class__.next_y += self.end_y + 1
         self.__class__.section_count += 1
 
-    def get_config_from_lvl(self):
-        pass
-
-    def change_config(self, config: dict):
+    def set_config(self, config: dict):
         for k, v in config.items():
             self.config[k] = v
 
@@ -144,20 +142,20 @@ class PadSection:
 
 #
 # #TODO   перенести в PadSection ?
-def create_section(scr, tag: str, make_lvl):
+def create_section(pad, tag: str, make_lvl):
     # передается функция заполнения уровня статикой make_lvl
     # к моменту прокрутки представления уровня должно существовать
     # resize_window
-    scr.resize(PadSection.next_y + 24, 80)
+    pad.resize(PadSection.next_y + 24, 80)
     #
-    new_section = PadSection(scr, tag)
+    new_section = PadSection(pad, tag)
     #
     PadSection.list_of_sections[tag] = new_section
-    # example: lvl_create_board
+    # example: prepare_lvl__board
     make_lvl(new_section)
 
     # noutrefresh
-    scr.noutrefresh(*new_section.section_coordinates)
+    pad.noutrefresh(*new_section.section_coordinates)
 
     return new_section
 
@@ -196,6 +194,7 @@ class DBG(Window):
         self.window.addstr(self.next_str_y, 0 , text)
         self.next_str_y += 1
         self.set_foreground()
+        # todo message stack
 
 
 def copy_section(section):
@@ -302,8 +301,6 @@ class Widget:
 class Label(Widget):
     def __init__(self, area: PadSection, start_y: int, start_x: int, widget_text: str):
         super().__init__(area, start_y, start_x, widget_text)
-        #
-        area.labels.append(self)
 
     def add_label_to_area(self):
         self.area.add_label(self)

@@ -3,28 +3,35 @@
 # create by @saxetr
 
 
-from time import sleep
-import os, shutil
-import curses, _curses, curses.panel
+import os
 from curses import wrapper
 import random
 from my_screen import *
 
-
-#
-# print(shutil.get_terminal_size())
-
-#
 #
 WIN_COMBINATIONS = ({1, 2, 3}, {4, 5, 6}, {7, 8, 9}, {1, 4, 7}, {2, 5, 8}, {3, 6, 9}, {1, 5, 9}, {3, 5, 7})
+
+
 # section_height = 24
 
 
 # #
-def lvl_start_screen(scr, section_coordinates):
-    scr.addstr(11, 36, "Press F", curses.A_REVERSE | curses.A_BLINK)
-    scr.addstr(12, 40, "   to start", curses.A_REVERSE)
-    scr.refresh(*section_coordinates)
+def prepare_lvl__start_screen(section):
+    #
+    def go_to_next_section():
+        # generating s2
+        if len(PadSection.list_of_sections) == 1:
+            s2 = create_section(section.pad, 'difficult_select_screen', prepare_lvl__difficult_select)
+            #
+            scroll_smooth(section, s2)
+        else:
+            scroll_smooth(section, PadSection.list_of_sections['difficult_select_screen'])
+
+    #
+    start_btn = Button(section, "start_btn", 11, 36, "Press F", action=go_to_next_section)
+    start_btn.draw()
+    section.pad.addstr(12, 40, "   to start", curses.A_REVERSE)
+    section.pad.refresh(*section.section_coordinates)
 
     y = 9
     x = 33
@@ -40,86 +47,79 @@ def lvl_start_screen(scr, section_coordinates):
     horizontal = "═"
 
     # 1
-    scr.addstr(y, x, ul_corner)
+    section.pad.addstr(y, x, ul_corner)
     x += 1
-    scr.refresh(*section_coordinates)
+    section.pad.refresh(*section.section_coordinates)
 
     # 2
     for i in range(width):
-        scr.addstr(y, x, horizontal)
+        section.pad.addstr(y, x, horizontal)
         x += 1
-        scr.refresh(*section_coordinates)
+        section.pad.refresh(*section.section_coordinates)
         sleep(s)
 
     # 3
-    scr.addstr(y, x, ur_corner)
+    section.pad.addstr(y, x, ur_corner)
     y += 1
-    scr.refresh(*section_coordinates)
+    section.pad.refresh(*section.section_coordinates)
 
     # 4
     for i in range(height):
-        scr.addstr(y, x, vertical)
+        section.pad.addstr(y, x, vertical)
         y += 1
-        scr.refresh(*section_coordinates)
+        section.pad.refresh(*section.section_coordinates)
         sleep(s)
 
     # 5
-    scr.addstr(y, x, lr_corner)
+    section.pad.addstr(y, x, lr_corner)
     x -= 1
-    scr.refresh(*section_coordinates)
+    section.pad.refresh(*section.section_coordinates)
 
     # 6
     for i in range(width):
-        scr.addstr(y, x, vertical)
+        section.pad.addstr(y, x, vertical)
         x -= 1
-        scr.refresh(*section_coordinates)
+        section.pad.refresh(*section.section_coordinates)
         sleep(s)
 
     # 7
-    scr.addstr(y, x, ll_corner)
+    section.pad.addstr(y, x, ll_corner)
     y -= 1
-    scr.refresh(*section_coordinates)
+    section.pad.refresh(*section.section_coordinates)
 
     # 8
     for i in range(height):
-        scr.addstr(y, x, vertical)
+        section.pad.addstr(y, x, vertical)
         y -= 1
 
-    scr.move(11, 42)
-    scr.refresh(*section_coordinates)
-
+    section.pad.move(11, 42)
+    section.pad.refresh(*section.section_coordinates)
     #
-    while 1:
-        key = scr.getch()
-        if key == ord('f') or key == ord('F'):
-            # scr.clear()
-
-            # # generating s2
-            s2 = create_section(scr, 'difficult_select_screen', lvl_difficult_select)
-            #
-            scroll_smooth(s1, s2)
-            break
+    lvl_control_config = {'key_m': (empty_command, 0), 'key_n': (empty_command, 0), 'key_p': (empty_command, 0)}
+    section.set_config(lvl_control_config)
 
 
-def lvl_difficult_select(section):
+def prepare_lvl__difficult_select(section):
+    #
     select_difficult = Label(section, 10,
                              80 // 2 - len("Use N and P keys to select mode and press ENTER:") // 2,
                              "Use N and P keys to select mode and press F:")
     select_difficult.draw()
-
-    difficult_random = Button(section, 'random_btn', 12, 80 // 2 - len("Random") // 2, "Random", action=create_new_section_with_board, section=section)
+    #
+    difficult_random = Button(section, 'random_btn', 12, 80 // 2 - len("Random") // 2,
+                              "Random", action=create_new_section_with_board, section=section)
     difficult_random.draw()
-
-    difficult_r = Button(section, 'r_btn', 13, 80//2 - len("Random")//2, "???", action=status_unavailable, section=section)
+    #
+    difficult_r = Button(section, 'r_btn', 13, 80 // 2 - len("Random") // 2,
+                         "???", action=status_unavailable, section=section)
     difficult_r.draw()
-
-    difficult_despair = Button(section, 'despair_btn', 14, 80//2 - len("Random")//2, "Despair", action=status_unavailable, section=section)
+    #
+    difficult_despair = Button(section, 'despair_btn', 14, 80 // 2 - len("Random") // 2,
+                               "Despair", action=status_unavailable, section=section)
     difficult_despair.draw()
 
-    lvl_control_config = {'n': PadSection.next_btn}
 
-
-def lvl_create_board(section: PadSection):
+def prepare_lvl__board(section: PadSection):
     # if dbg_mode:
     #     for x in range(0,80,4 ):
     #         for y in range(24):
@@ -208,7 +208,10 @@ def level_control(section: PadSection):
 
         # global?
         elif key == ord('m'):
-            menu_window(section)
+            if section.config['key_m']:
+                execute_command(section.config['key_m'][0], section.config['key_m'][1])
+            else:
+                menu_window(section)
 
         elif key == ord('n'):
             if section.config['key_n']:
@@ -223,8 +226,9 @@ def level_control(section: PadSection):
                 section.prev_btn()
 
         elif key == ord('q'):
-            scroll_smooth(section, s1)
+            scroll_smooth(section, PadSection.list_of_sections['start_screen'])
             # break
+            pass
 
 
 def execute_command(command, *args):
@@ -241,7 +245,7 @@ def status_unavailable(**kwargs):
     section = kwargs['section']
     t = 'Unavailable'
 
-    l1 = Label(section, 23, 79-len(t), t)
+    l1 = Label(section, 23, 79 - len(t), t)
     l1.draw()
 
     section.pad.noutrefresh(*section.section_coordinates)
@@ -249,7 +253,7 @@ def status_unavailable(**kwargs):
 
     curses.napms(1000)
 
-    l2 = Label(section, 23, 79-len(t), ' '*len(t))
+    l2 = Label(section, 23, 79 - len(t), ' ' * len(t))
     l2.draw()
 
     section.pad.noutrefresh(*section.section_coordinates)
@@ -263,7 +267,7 @@ def create_new_section_with_board(**kwargs):
 
     section = kwargs['section']
 
-    new_board = create_section(section.pad, tag='board_{}'.format(b), make_lvl=lvl_create_board)
+    new_board = create_section(section.pad, tag='board_{}'.format(b), make_lvl=prepare_lvl__board)
     b += 1
     scroll_smooth(section, new_board)
     #
@@ -284,7 +288,7 @@ def create_new_section_with_board(**kwargs):
                           'key_p': (empty_command, 0),
                           'hide': False,
                           'start_command': g.start_game}
-    new_board.change_config(lvl_control_config)
+    new_board.set_config(lvl_control_config)
 
 
 def result_window():
@@ -296,31 +300,19 @@ class Gameplay:
     пользователь вводит координаты своего хода, компьютер делает случайный ход,
      кто играет крестиками выбирается случайно, если кто-то выиграл – это выводится на экран.
     """
+
     def __init__(self, section: PadSection):
         #
         self.section = section
-        self.player = PlayerController(self, 0) # позиция изменяется в toss__init
-        self.computer = AIController(self, 0)   # позиция изменяется в toss__init
+        self.player = PlayerController(self, 0)  # позиция изменяется в toss__init
+        self.computer = AIController(self, 0)  # позиция изменяется в toss__init
         self.p1 = None  # X
         self.p2 = None  # 0
         #
         self.board = Board(section)
         #
-        self.toss__init()     # да, в инит, но столько проблем решает...
+        self.toss__init()  # да, в инит, но столько проблем решает...
         self.current_player = self.p1
-
-    def start_game(self):
-        self.make_board()
-        # в дальнейшем , вызов хода компьютера происходит из функции хода игрока
-        if self.p1 is self.computer:
-            curses.napms(1000)
-            self.p1.place_mark()
-
-
-    def make_board(self):
-        self.section.set_gameplay(self)
-        #
-        self.board.draw_grid(3,3)
 
     def toss__init(self):
         self.p1 = random.choice((self.player, self.computer))
@@ -331,10 +323,22 @@ class Gameplay:
             self.p2 = self.computer
             # interface
             # устанавливаем фокус на player_btn
-            self.section.change_config({'focus': 1})
+            self.section.set_config({'focus': 1})
         #
         self.p1.position = 1
         self.p2.position = 2
+
+    def start_game(self):
+        self.make_board()
+        # в дальнейшем , вызов хода компьютера происходит из функции хода игрока
+        if self.p1 is self.computer:
+            curses.napms(1000)
+            self.p1.place_mark()
+
+    def make_board(self):
+        self.section.set_gameplay(self)
+        #
+        self.board.draw_grid(3, 3)
 
     def change_current_player(self):
         if self.current_player is self.p1:
@@ -344,13 +348,12 @@ class Gameplay:
         # interface
         self.section.next_btn()
 
-
     def print_unavailable(self, section, text):
         pass
 
 
 class Controller:
-    def __init__(self, game, position:str):
+    def __init__(self, game, position: int):
         self.game = game
         #
         self.moves = set()
@@ -383,7 +386,7 @@ class Controller:
 
 
 class PlayerController(Controller):
-    def __init__(self, game, position: str):
+    def __init__(self, game, position: int):
         super().__init__(game, position)
         self.mark_coordinates = None
 
@@ -391,8 +394,8 @@ class PlayerController(Controller):
         self.mark_coordinates = coord
 
         # interface
-        l = Label(self.game.section, 8, 60, 'Enter coordinate:')
-        l.draw()
+        l_coord = Label(self.game.section, 8, 60, 'Enter coordinate:')
+        l_coord.draw()
 
         # interface
         m = Label(self.game.section, 9, 65, str(coord))
@@ -422,7 +425,6 @@ class AIController(Controller):
     def place_mark(self):
         cell = random.choice(self.find_empty_cell())
         mark_coordinates = self.game.board.cells.index(cell) + 1
-        # cell = self.game.board.cells[mark_coordinates - 1]
         # print(mark_coordinates)
         #
         curses.napms(1000)
@@ -437,7 +439,6 @@ class AIController(Controller):
 
 
 class GridCell:
-
     n = 1
 
     def __init__(self, section, start_y, start_x, width, height):
@@ -531,7 +532,7 @@ class GridCell:
             sleep(sleep_time)
 
         # 9
-        scr.addstr(y, x+1, str(self.__class__.n))
+        scr.addstr(y, x + 1, str(self.__class__.n))
         self.__class__.n += 1
 
     def draw_x(self):
@@ -541,19 +542,19 @@ class GridCell:
         XX   XX
         """
         # XX---XX
-        self.section.pad.addch(self.start_y +1, self.start_x + 2, 'X')
+        self.section.pad.addch(self.start_y + 1, self.start_x + 2, 'X')
         # self.section.pad.addch(self.start_y +1, self.start_x + 3, 'X')
         # self.section.pad.addch(self.start_y +1, self.start_x + 5, 'X')
-        self.section.pad.addch(self.start_y +1, self.start_x + 6, 'X')
+        self.section.pad.addch(self.start_y + 1, self.start_x + 6, 'X')
         # --XXX--
         # self.section.pad.addch(self.start_y +2, self.start_x + 3, 'X')
-        self.section.pad.addch(self.start_y +2, self.start_x + 4, 'X')
+        self.section.pad.addch(self.start_y + 2, self.start_x + 4, 'X')
         # self.section.pad.addch(self.start_y +2, self.start_x + 5, 'X')
         # XX---XX
-        self.section.pad.addch(self.start_y +3, self.start_x + 2, 'X')
+        self.section.pad.addch(self.start_y + 3, self.start_x + 2, 'X')
         # self.section.pad.addch(self.start_y +3, self.start_x + 3, 'X')
         # self.section.pad.addch(self.start_y +3, self.start_x + 5, 'X')
-        self.section.pad.addch(self.start_y +3, self.start_x + 6, 'X')
+        self.section.pad.addch(self.start_y + 3, self.start_x + 6, 'X')
         #
         self.section.pad.refresh(*self.section.section_coordinates)
         #
@@ -566,16 +567,16 @@ class GridCell:
         --000--
         """
         #
-        self.section.pad.addch(self.start_y +1, self.start_x + 3, '0')
-        self.section.pad.addch(self.start_y +1, self.start_x + 4, '0')
-        self.section.pad.addch(self.start_y +1, self.start_x + 5, '0')
+        self.section.pad.addch(self.start_y + 1, self.start_x + 3, '0')
+        self.section.pad.addch(self.start_y + 1, self.start_x + 4, '0')
+        self.section.pad.addch(self.start_y + 1, self.start_x + 5, '0')
         #
-        self.section.pad.addch(self.start_y +2, self.start_x + 2, '0')
-        self.section.pad.addch(self.start_y +2, self.start_x + 6, '0')
+        self.section.pad.addch(self.start_y + 2, self.start_x + 2, '0')
+        self.section.pad.addch(self.start_y + 2, self.start_x + 6, '0')
         #
-        self.section.pad.addch(self.start_y +3, self.start_x + 3, '0')
-        self.section.pad.addch(self.start_y +3, self.start_x + 4, '0')
-        self.section.pad.addch(self.start_y +3, self.start_x + 5, '0')
+        self.section.pad.addch(self.start_y + 3, self.start_x + 3, '0')
+        self.section.pad.addch(self.start_y + 3, self.start_x + 4, '0')
+        self.section.pad.addch(self.start_y + 3, self.start_x + 5, '0')
         #
         self.section.pad.refresh(*self.section.section_coordinates)
         #
@@ -588,7 +589,7 @@ class Board:
         #
         self.cells = []
 
-    def draw_grid(self,  columns: int, raws: int):
+    def draw_grid(self, columns: int, raws: int):
 
         start_y = 3 + self.section.section_coordinates[0]
         start_x = 25 + self.section.section_coordinates[1]
@@ -596,21 +597,21 @@ class Board:
         y = start_y
         x = start_x
 
-        CELL_HEIGHT = 3
-        CELL_WIDTH = 7
+        cell_height = 3
+        cell_width = 7
 
         for c in range(columns):
             for r in range(raws):
-                self.cells.append(GridCell(self.section, y, x, CELL_WIDTH, CELL_HEIGHT))
-                x = x + CELL_WIDTH + 3
+                self.cells.append(GridCell(self.section, y, x, cell_width, cell_height))
+                x = x + cell_width + 3
 
-            y = y + CELL_HEIGHT + 2
+            y = y + cell_height + 2
             x = start_x
 
         #
         GridCell.n = 1
 
-    def higlight_computer(self):
+    def highlight(self):
         for y in range(5, 18):
             for x in range(2, 22):
                 self.section.pad.addch(self.section.start_y + y, x, '-')
@@ -619,18 +620,13 @@ class Board:
 
 # 80x24
 def main(stdscr):
+    # stdscr config
     stdscr.keypad(True)
-
-    #
     curses.curs_set(0)
     # curses.mousemask(curses.ALL_MOUSE_EVENTS | curses.REPORT_MOUSE_POSITION)
-    #
     curses.init_pair(1, curses.COLOR_RED, curses.COLOR_WHITE)
-    #
-    pad = curses.newpad(24*1, 80)
-    if dbg_mode:
-        for x in range(24*1):
-            pad.addstr(x,0, str(x))
+    # create main pad
+    pad = curses.newpad(24 * 1, 80)
 
     # TODO
     # global dbg_window
@@ -638,10 +634,8 @@ def main(stdscr):
 
     stdscr.refresh()
 
-    # # sections
-    global s1
-    s1 = PadSection(pad, tag='start_screen')
-    lvl_start_screen(pad, s1.section_coordinates)
+    # create first section
+    PadSection.current_section = create_section(pad, 'start_screen', prepare_lvl__start_screen)
 
     # set_control
     while True:

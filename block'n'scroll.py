@@ -160,7 +160,7 @@ def level_control(section: PadSection):
         section.t_set_focus(section.config['focus'])
         # dbg
         # print('DBG:::LVL_CONTROL:::current_focused_btn ', section.current_focused_btn)
-        curses.napms(300)
+        # curses.napms(300)
 
     section.pad.noutrefresh(*section.section_coordinates)
     curses.doupdate()

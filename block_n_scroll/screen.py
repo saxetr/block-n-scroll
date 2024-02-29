@@ -143,15 +143,11 @@ class PadSection:
 #
 # #TODO   перенести в PadSection ?
 def create_section(pad, tag: str, make_lvl):
-    # передается функция заполнения уровня статикой make_lvl
-    # к моменту прокрутки представления уровня должно существовать
-    # resize_window
     pad.resize(PadSection.next_y + 24, 80)
-    #
     new_section = PadSection(pad, tag)
-    #
+
     PadSection.list_of_sections[tag] = new_section
-    # example: prepare_lvl__board
+
     make_lvl(new_section)
 
     # noutrefresh
